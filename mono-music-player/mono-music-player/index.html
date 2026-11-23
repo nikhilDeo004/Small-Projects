@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#000000">
+  <meta name="description" content="Masta ree — your personal music player.">
+  <title>Masta ree ! — Music Player</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main class="app">
+    <header class="header">
+      <a href="#" class="logo" aria-label="Masta ree home">Masta ree<span> !</span></a>
+      <div class="header-right">
+        <span class="header-label">YOUR PERSONAL MUSIC SPACE</span>
+        <button id="sidebarToggle" class="sidebar-toggle-btn" type="button" aria-label="Open playlist">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/>
+            <line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/>
+          </svg>
+        </button>
+      </div>
+    </header>
+
+    <section class="search-section" aria-label="Search music">
+      <label class="search-box">
+        <svg class="search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input id="searchInput" type="search" placeholder="Search your music..." autocomplete="off">
+        <kbd class="search-shortcut">SEARCH</kbd>
+      </label>
+    </section>
+
+    <section class="player-section" aria-label="Music player">
+      <p class="eyebrow">NOW PLAYING</p>
+      <div class="album-art" aria-hidden="true">
+        <div class="album-symbol">♪</div>
+        <div class="album-caption">MASTA REE / AUDIO</div>
+      </div>
+
+      <div class="song-info">
+        <h1 id="songTitle">Select a song</h1>
+        <p id="songArtist">Your music collection</p>
+      </div>
+
+      <div class="progress-section">
+        <input id="progressBar" class="range" type="range" min="0" max="1000" value="0"
+               aria-label="Seek through song" disabled>
+        <div class="time-container">
+          <span id="currentTime">0:00</span>
+          <span id="duration">0:00</span>
+        </div>
+      </div>
+
+      <div class="controls">
+        <button id="shuffleBtn" class="secondary-btn" type="button" aria-label="Toggle shuffle" aria-pressed="false">⇄</button>
+        <button id="prevBtn" class="control-btn" type="button" aria-label="Previous song">|◀</button>
+        <button id="playBtn" class="play-btn" type="button" aria-label="Play" disabled>▶</button>
+        <button id="nextBtn" class="control-btn" type="button" aria-label="Next song">▶|</button>
+        <button id="repeatBtn" class="secondary-btn" type="button" aria-label="Toggle repeat" aria-pressed="false">↻</button>
+      </div>
+
+      <div class="volume-section">
+        <span>VOL</span>
+        <input id="volumeBar" class="range volume-range" type="range" min="0" max="1" step="0.01" value="0.8"
+               aria-label="Volume">
+        <span id="volumeValue">80%</span>
+      </div>
+      <p id="statusMessage" class="status-message" role="status" aria-live="polite"></p>
+    </section>
+
+    <footer>
+      <span>MASTA REE MUSIC PLAYER</span>
+      <span>MADE FOR MUSIC.</span>
+    </footer>
+  </main>
+
+  <!-- Sidebar overlay -->
+  <div id="sidebarOverlay" class="sidebar-overlay"></div>
+
+  <!-- Sidebar playlist -->
+  <aside id="sidebar" class="sidebar" aria-label="Playlist sidebar">
+    <div class="sidebar-header">
+      <div>
+        <p class="eyebrow">YOUR COLLECTION</p>
+        <h2>Playlist <span id="songCount">0</span></h2>
+      </div>
+      <button id="sidebarClose" class="sidebar-close-btn" type="button" aria-label="Close playlist">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div id="playlist" class="playlist"></div>
+  </aside>
+
+  <audio id="audioPlayer" preload="metadata"></audio>
+  <script src="songs.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>
