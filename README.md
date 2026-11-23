@@ -18,20 +18,10 @@ mono-music-player/
 ## Add your music
 
 1. Copy your audio files into the `audios/` folder.
-2. Open `songs.js`.
-3. Add one object per audio file, using its exact filename:
+2. Run `node generate-songs.js` from the project root. This scans `audios/` and regenerates `songs.js` with every supported audio file.
+3. Commit and push both the audio files and the regenerated `songs.js` to GitHub. Vercel serves the playlist from `songs.js`; it cannot automatically discover files in a static folder.
 
-```js
-const songs = [
-  {
-    title: "My Track",
-    artist: "My Artist",
-    src: "audios/my-track.mp3"
-  }
-];
-```
-
-The filename and capitalization must match the actual file. The title and artist are displayed in the player and playlist.
+The filename and capitalization are read directly from the audio file. Supported extensions are `.mp3`, `.wav`, `.ogg`, `.m4a`, `.aac`, and `.flac`.
 
 ## Run locally
 
