@@ -10,6 +10,12 @@ function titleFromFilename(path) {
     .replace(/\b\w/g, c => c.toUpperCase());
 }
 
+function escapeHTML(value) {
+  return String(value).replace(/[&<>"']/g, character => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;"
+  }[character]));
+}
+
 function formatTime(sec) {
   if (!sec || isNaN(sec)) return "0:00";
   const m = Math.floor(sec / 60);
@@ -36,6 +42,8 @@ const progressBar  = $("progressBar");
 const currentTime  = $("currentTime");
 const duration     = $("duration");
 const playBtn      = $("playBtn");
+const seekBackBtn  = $("seekBackBtn");
+const seekForwardBtn = $("seekForwardBtn");
 const prevBtn      = $("prevBtn");
 const nextBtn      = $("nextBtn");
 const shuffleBtn   = $("shuffleBtn");
@@ -44,6 +52,7 @@ const volumeBar    = $("volumeBar");
 const volumeValue  = $("volumeValue");
 const searchInput  = $("searchInput");
 const songCount    = $("songCount");
+const headerSongCount = $("headerSongCount");
 const playlistEl   = $("playlist");
 const statusMsg    = $("statusMessage");
 
@@ -73,10 +82,13 @@ function showStatus(msg, ms = 3000) {
 
 function openSidebar() {
   sidebarOpen = true;
+  sidebar.inert = false;
   sidebar.classList.add("open");
   sidebarOverlay.classList.add("open");
   sidebarToggle.classList.add("active");
+  sidebarToggle.setAttribute("aria-expanded", "true");
   document.body.style.overflow = "hidden";
+  sidebarClose.focus();
 }
 
 function closeSidebar() {
@@ -84,7 +96,10 @@ function closeSidebar() {
   sidebar.classList.remove("open");
   sidebarOverlay.classList.remove("open");
   sidebarToggle.classList.remove("active");
+  sidebarToggle.setAttribute("aria-expanded", "false");
   document.body.style.overflow = "";
+  sidebar.inert = true;
+  sidebarToggle.focus();
 }
 
 function toggleSidebar() {
@@ -103,27 +118,30 @@ function renderPlaylist(list = filteredList) {
   if (list.length === 0) {
     playlistEl.innerHTML = '<p class="empty-message">No songs found.</p>';
     songCount.textContent = "0";
+    headerSongCount.textContent = playlist.length;
     return;
   }
 
   songCount.textContent = list.length;
+  headerSongCount.textContent = playlist.length;
 
   list.forEach((song, i) => {
     const globalIndex = playlist.indexOf(song);
-    const item = document.createElement("div");
+    const item = document.createElement("button");
+    item.type = "button";
     item.className = "song-item" + (globalIndex === currentIndex ? " active" : "");
-    item.setAttribute("role", "button");
-    item.setAttribute("tabindex", "0");
     item.innerHTML = `
       <span class="song-number">${String(i + 1).padStart(2, "0")}</span>
       <div class="song-details">
-        <h3>${song.title}</h3>
-        <p>${song.artist}</p>
+      <h3>${escapeHTML(song.title)}</h3>
+        <p>${escapeHTML(song.artist)}</p>
       </div>
       ${globalIndex === currentIndex && isPlaying ? '<span class="playing-indicator">♫</span>' : ""}
     `;
-    item.addEventListener("click", () => loadSong(globalIndex));
-    item.addEventListener("keydown", e => { if (e.key === "Enter") loadSong(globalIndex); });
+    item.addEventListener("click", () => {
+      loadSong(globalIndex);
+      if (window.matchMedia("(max-width: 700px)").matches) closeSidebar();
+    });
     playlistEl.appendChild(item);
   });
 }
@@ -139,9 +157,16 @@ function loadSong(index) {
   audio.src = song.src;
   songTitle.textContent  = song.title;
   songArtist.textContent = song.artist;
+  currentTime.textContent = "0:00";
+  duration.textContent = "0:00";
+  progressBar.value = 0;
+  isPlaying = false;
+  updatePlayBtn();
 
   playBtn.disabled     = false;
   progressBar.disabled = false;
+  seekBackBtn.disabled = true;
+  seekForwardBtn.disabled = true;
 
   audio.play()
     .then(() => {
@@ -152,6 +177,9 @@ function loadSong(index) {
     })
     .catch(err => {
       console.error("Playback error:", err);
+      isPlaying = false;
+      updatePlayBtn();
+      renderPlaylist();
       showStatus("Could not play this file.");
     });
 }
@@ -161,8 +189,14 @@ function loadSong(index) {
 function togglePlay() {
   if (currentIndex === -1) return;
   if (audio.paused) {
-    audio.play();
-    isPlaying = true;
+    audio.play()
+      .then(() => {
+        isPlaying = true;
+        updatePlayBtn();
+        renderPlaylist();
+      })
+      .catch(() => showStatus("Could not play this file."));
+    return;
   } else {
     audio.pause();
     isPlaying = false;
@@ -172,8 +206,16 @@ function togglePlay() {
 }
 
 function updatePlayBtn() {
-  playBtn.textContent   = isPlaying ? "❚❚" : "▶";
+  playBtn.innerHTML = isPlaying
+    ? '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5h3v14H8zm5 0h3v14h-3z" fill="currentColor"/></svg>'
+    : '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4.5v15l12-7.5-12-7.5Z" fill="currentColor"/></svg>';
   playBtn.setAttribute("aria-label", isPlaying ? "Pause" : "Play");
+}
+
+function skipBy(seconds) {
+  if (currentIndex < 0 || !Number.isFinite(audio.duration)) return;
+  audio.currentTime = Math.max(0, Math.min(audio.duration, audio.currentTime + seconds));
+  showStatus(seconds < 0 ? "Back 10 seconds" : "Forward 10 seconds", 1200);
 }
 
 /* ── Previous / Next ───────────────────────────────── */
@@ -207,6 +249,12 @@ audio.addEventListener("timeupdate", () => {
 
 audio.addEventListener("loadedmetadata", () => {
   duration.textContent = formatTime(audio.duration);
+  seekBackBtn.disabled = false;
+  seekForwardBtn.disabled = false;
+});
+
+audio.addEventListener("error", () => {
+  if (currentIndex >= 0) showStatus("This song could not be loaded. Check the audio file and try again.", 5000);
 });
 
 progressBar.addEventListener("input", () => {
@@ -236,11 +284,20 @@ audio.addEventListener("ended", () => {
 
 /* ── Volume ────────────────────────────────────────── */
 
-audio.volume = parseFloat(volumeBar.value);
+let initialVolume = parseFloat(volumeBar.value);
+try {
+  const savedVolumeValue = localStorage.getItem("mono-player-volume");
+  const savedVolume = Number(savedVolumeValue);
+  if (savedVolumeValue !== null && Number.isFinite(savedVolume) && savedVolume >= 0 && savedVolume <= 1) initialVolume = savedVolume;
+} catch (_) {}
+volumeBar.value = initialVolume;
+audio.volume = initialVolume;
+volumeValue.textContent = Math.round(initialVolume * 100) + "%";
 
 volumeBar.addEventListener("input", () => {
   audio.volume = parseFloat(volumeBar.value);
   volumeValue.textContent = Math.round(audio.volume * 100) + "%";
+  try { localStorage.setItem("mono-player-volume", volumeBar.value); } catch (_) {}
 });
 
 /* ── Shuffle & Repeat ──────────────────────────────── */
@@ -249,17 +306,18 @@ shuffleBtn.addEventListener("click", () => {
   isShuffle = !isShuffle;
   shuffleBtn.classList.toggle("active", isShuffle);
   shuffleBtn.setAttribute("aria-pressed", isShuffle);
+  shuffleBtn.setAttribute("aria-label", `Shuffle ${isShuffle ? "on" : "off"}`);
   showStatus(isShuffle ? "Shuffle ON" : "Shuffle OFF");
 });
 
-const repeatLabels = ["Repeat OFF", "Repeat ALL", "Repeat ONE"];
-const repeatSymbols = ["↻", "↻", "⟳"];
+const repeatLabels = ["Repeat off", "Repeat all", "Repeat one"];
 
 repeatBtn.addEventListener("click", () => {
   repeatMode = (repeatMode + 1) % 3;
   repeatBtn.classList.toggle("active", repeatMode !== 0);
-  repeatBtn.textContent = repeatSymbols[repeatMode];
+  repeatBtn.classList.toggle("repeat-one", repeatMode === 2);
   repeatBtn.setAttribute("aria-pressed", repeatMode !== 0);
+  repeatBtn.setAttribute("aria-label", repeatLabels[repeatMode]);
   showStatus(repeatLabels[repeatMode]);
 });
 
@@ -283,6 +341,8 @@ searchInput.addEventListener("input", () => {
 playBtn.addEventListener("click", togglePlay);
 nextBtn.addEventListener("click", playNext);
 prevBtn.addEventListener("click", playPrev);
+seekBackBtn.addEventListener("click", () => skipBy(-10));
+seekForwardBtn.addEventListener("click", () => skipBy(10));
 
 /* ── Keyboard shortcuts ────────────────────────────── */
 
@@ -292,17 +352,22 @@ document.addEventListener("keydown", e => {
     closeSidebar();
     return;
   }
-  if (e.target.tagName === "INPUT") return;
+  if (e.key === "/" && !e.target.matches("input, textarea, select")) {
+    e.preventDefault();
+    searchInput.focus();
+    return;
+  }
+  if (e.target.matches("input, button, a, select, textarea")) return;
   switch (e.code) {
     case "Space":
       e.preventDefault();
       togglePlay();
       break;
     case "ArrowRight":
-      if (audio.duration) audio.currentTime = Math.min(audio.duration, audio.currentTime + 5);
+      skipBy(10);
       break;
     case "ArrowLeft":
-      audio.currentTime = Math.max(0, audio.currentTime - 5);
+      skipBy(-10);
       break;
   }
 });
@@ -310,4 +375,5 @@ document.addEventListener("keydown", e => {
 /* ── Init ──────────────────────────────────────────── */
 
 renderPlaylist();
+updatePlayBtn();
 showStatus(`${playlist.length} songs loaded.`, 4000);
