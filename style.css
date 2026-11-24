@@ -531,6 +531,43 @@ button { color: inherit; cursor: pointer; }
   flex: 0 0 auto;
   padding: 12px 16px 8px;
 }
+.device-library-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex: 0 0 auto;
+  padding: 8px 16px 10px;
+  border-bottom: 1px solid var(--border);
+}
+.device-library-actions > span {
+  color: #707070;
+  font-size: 10px;
+}
+.add-device-songs-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 0 13px;
+  color: #fff;
+  background: #171717;
+  border: 1px solid #333;
+  border-radius: 9px;
+  font-size: 12px;
+  font-weight: 600;
+  transition: background var(--transition), border-color var(--transition);
+}
+.add-device-songs-btn:hover { background: #222; border-color: #555; }
+.add-device-songs-btn svg {
+  width: 17px;
+  height: 17px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+}
 .playlist-filter {
   display: inline-flex;
   align-items: center;
@@ -555,7 +592,8 @@ button { color: inherit; cursor: pointer; }
 .playlist-filter.active span { color: #ddd; }
 
 .song-favorite-btn,
-.favorite-current-btn {
+.favorite-current-btn,
+.song-remove-btn {
   display: grid;
   place-items: center;
   flex: 0 0 auto;
@@ -569,7 +607,8 @@ button { color: inherit; cursor: pointer; }
   transition: color var(--transition), background var(--transition), transform var(--transition);
 }
 .song-favorite-btn svg,
-.favorite-current-btn svg {
+.favorite-current-btn svg,
+.song-remove-btn svg {
   width: 20px;
   height: 20px;
   fill: none;
@@ -581,14 +620,18 @@ button { color: inherit; cursor: pointer; }
 }
 .song-favorite-btn:hover,
 .favorite-current-btn:hover:not(:disabled) { color: #ff6b93; background: #211219; }
+.song-remove-btn { color: #626262; }
+.song-remove-btn:hover { color: #ff7878; background: #221515; }
 .song-favorite-btn.is-favorite,
 .favorite-current-btn.is-favorite { color: #ff5d8f; }
 .song-favorite-btn.is-favorite svg,
 .favorite-current-btn.is-favorite svg { fill: currentColor; }
 .song-favorite-btn:active,
-.favorite-current-btn:active:not(:disabled) { transform: scale(.9); }
+.favorite-current-btn:active:not(:disabled),
+.song-remove-btn:active { transform: scale(.9); }
 .favorite-current-btn:disabled { opacity: .25; cursor: not-allowed; }
 .song-favorite-btn { margin-right: 4px; }
+.song-remove-btn { margin-right: 4px; }
 .visually-hidden {
   position: absolute;
   width: 1px;

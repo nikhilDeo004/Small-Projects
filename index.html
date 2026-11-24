@@ -102,6 +102,14 @@
       <button id="allSongsFilter" class="playlist-filter active" type="button" aria-pressed="true">All <span id="allSongCount">0</span></button>
       <button id="favoritesFilter" class="playlist-filter" type="button" aria-pressed="false">Favorites <span id="favoriteCount">0</span></button>
     </div>
+    <div class="device-library-actions">
+      <button id="addDeviceSongsBtn" class="add-device-songs-btn" type="button">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+        Add from device
+      </button>
+      <input id="deviceSongInput" class="visually-hidden" type="file" accept="audio/*,.mp3,.wav,.ogg,.m4a,.aac,.flac" multiple>
+      <span>Saved on this device</span>
+    </div>
     <div id="playlist" class="playlist" aria-live="polite"></div>
   </aside>
 
