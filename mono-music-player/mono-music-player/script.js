@@ -317,7 +317,7 @@ function audioMimeType(file) {
 async function addDeviceSongs(files) {
   const audioFiles = files.filter(file => file.type.startsWith("audio/") || /\.(mp3|wav|ogg|m4a|aac|flac)$/i.test(file.name));
   if (!audioFiles.length) {
-    showStatus("Choose an audio file to add.");
+    showStatus("No audio file selected. Open Browse or Files and choose an audio file.", 5000);
     return;
   }
 
