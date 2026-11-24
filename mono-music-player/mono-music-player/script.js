@@ -132,14 +132,26 @@ async function getStoredDeviceSongs() {
 
 async function storeDeviceSongs(records) {
   const db = await getDeviceDatabase();
-  return new Promise((resolve, reject) => {
-    const transaction = db.transaction("deviceSongs", "readwrite");
-    const store = transaction.objectStore("deviceSongs");
-    records.forEach(record => store.put(record));
-    transaction.oncomplete = () => resolve();
-    transaction.onerror = () => reject(transaction.error || new Error("Could not save songs."));
-    transaction.onabort = () => reject(transaction.error || new Error("Song storage is full or unavailable."));
-  });
+  const savedRecords = [];
+  const failedRecords = [];
+
+  for (const record of records) {
+    try {
+      await new Promise((resolve, reject) => {
+        const transaction = db.transaction("deviceSongs", "readwrite");
+        const request = transaction.objectStore("deviceSongs").put(record);
+        request.onerror = () => reject(request.error || new Error("Could not save this song."));
+        transaction.oncomplete = () => resolve();
+        transaction.onerror = () => reject(transaction.error || new Error("Could not save this song."));
+        transaction.onabort = () => reject(transaction.error || new Error("Device storage is full or unavailable."));
+      });
+      savedRecords.push(record);
+    } catch (error) {
+      failedRecords.push({ record, error });
+    }
+  }
+
+  return { savedRecords, failedRecords };
 }
 
 async function deleteStoredDeviceSong(id) {
@@ -315,7 +327,7 @@ function audioMimeType(file) {
 }
 
 async function addDeviceSongs(files) {
-  const audioFiles = files.filter(file => file.type.startsWith("audio/") || /\.(mp3|wav|ogg|m4a|aac|flac)$/i.test(file.name));
+  const audioFiles = files.filter(file => file.size > 0 && (String(file.type || "").startsWith("audio/") || /\.(mp3|wav|ogg|m4a|aac|flac)$/i.test(file.name)));
   if (!audioFiles.length) {
     showStatus("No audio file selected. Open Browse or Files and choose an audio file.", 5000);
     return;
@@ -335,19 +347,35 @@ async function addDeviceSongs(files) {
     };
   });
 
+  addDeviceSongsBtn.disabled = true;
+  showStatus(`Saving ${records.length} song${records.length === 1 ? "" : "s"} on this device…`, 0);
   try {
-    await storeDeviceSongs(records);
-    playlist.push(...records.map(deviceSongFromRecord));
-    activePlaylistFilter = "all";
-    searchInput.value = "";
-    updatePlaylistView();
-    showStatus(`Added ${records.length} song${records.length === 1 ? "" : "s"}. Saved on this device.` , 5000);
+    const { savedRecords, failedRecords } = await storeDeviceSongs(records);
+    if (savedRecords.length) {
+      playlist.push(...savedRecords.map(deviceSongFromRecord));
+      activePlaylistFilter = "all";
+      searchInput.value = "";
+      updatePlaylistView();
+    }
+
+    const skippedCount = files.length - audioFiles.length;
+    if (failedRecords.length) {
+      const quotaExceeded = failedRecords.some(item => item.error?.name === "QuotaExceededError");
+      const reason = quotaExceeded ? "Device storage is full." : "Some files could not be saved.";
+      showStatus(`${savedRecords.length} added, ${failedRecords.length} failed. ${reason}`, 6000);
+    } else if (skippedCount) {
+      showStatus(`Added ${savedRecords.length} song${savedRecords.length === 1 ? "" : "s"}. Skipped ${skippedCount} non-audio file${skippedCount === 1 ? "" : "s"}.`, 5000);
+    } else {
+      showStatus(`Added ${savedRecords.length} song${savedRecords.length === 1 ? "" : "s"}. Saved on this device.`, 5000);
+    }
   } catch (error) {
     console.error("Could not save device songs:", error);
     const message = error?.name === "QuotaExceededError"
       ? "There isn't enough storage on this device for these songs."
       : "Could not save the selected songs in this browser.";
     showStatus(message, 5000);
+  } finally {
+    addDeviceSongsBtn.disabled = false;
   }
 }
 
@@ -672,8 +700,11 @@ favoritesFilterBtn.addEventListener("click", () => {
 addDeviceSongsBtn.addEventListener("click", () => deviceSongInput.click());
 deviceSongInput.addEventListener("change", async () => {
   const files = [...(deviceSongInput.files || [])];
-  deviceSongInput.value = "";
-  if (files.length) await addDeviceSongs(files);
+  try {
+    if (files.length) await addDeviceSongs(files);
+  } finally {
+    deviceSongInput.value = "";
+  }
 });
 
 /* ── Button wiring ─────────────────────────────────── */
