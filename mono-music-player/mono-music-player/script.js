@@ -326,6 +326,13 @@ function audioMimeType(file) {
   return ({ mp3: "audio/mpeg", wav: "audio/wav", ogg: "audio/ogg", m4a: "audio/mp4", aac: "audio/aac", flac: "audio/flac" })[extension] || "application/octet-stream";
 }
 
+async function deviceAudioFingerprint(blob) {
+  if (!window.crypto?.subtle) return null;
+  const bytes = await blob.arrayBuffer();
+  const digest = await window.crypto.subtle.digest("SHA-256", bytes);
+  return [...new Uint8Array(digest)].map(byte => byte.toString(16).padStart(2, "0")).join("");
+}
+
 async function addDeviceSongs(files) {
   const audioFiles = files.filter(file => file.size > 0 && (String(file.type || "").startsWith("audio/") || /\.(mp3|wav|ogg|m4a|aac|flac)$/i.test(file.name)));
   if (!audioFiles.length) {
@@ -333,23 +340,75 @@ async function addDeviceSongs(files) {
     return;
   }
 
-  const records = audioFiles.map(file => {
-    const mimeType = audioMimeType(file);
-    return {
-      id: window.crypto?.randomUUID ? window.crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`,
-      title: file.name.replace(/\.[^/.]+$/, "").replace(/[._-]+/g, " ").trim(),
-      artist: "From this device",
-      fileName: file.name,
-      mimeType,
-      size: file.size,
-      blob: file.slice(0, file.size, mimeType),
-      addedAt: Date.now()
-    };
-  });
-
   addDeviceSongsBtn.disabled = true;
-  showStatus(`Saving ${records.length} song${records.length === 1 ? "" : "s"} on this device…`, 0);
+  showStatus("Checking selected songs for duplicates…", 0);
   try {
+    const existingRecords = await getStoredDeviceSongs();
+    const fingerprintsBySize = new Map();
+    const legacyCheckedSizes = new Set();
+    const fallbackSeen = new Set();
+    for (const record of existingRecords) {
+      if (!fingerprintsBySize.has(record.size)) fingerprintsBySize.set(record.size, new Set());
+      if (record.fingerprint) fingerprintsBySize.get(record.size).add(record.fingerprint);
+    }
+
+    const records = [];
+    const selectionFingerprints = new Map();
+    let duplicateCount = 0;
+    for (const file of audioFiles) {
+      const mimeType = audioMimeType(file);
+      const blob = file.slice(0, file.size, mimeType);
+      let fingerprint = await deviceAudioFingerprint(blob);
+      const existingAtSize = fingerprintsBySize.get(file.size) || new Set();
+
+      // Older saved songs have no fingerprint yet; hash only same-size candidates.
+      if (fingerprint && !legacyCheckedSizes.has(file.size)) {
+        legacyCheckedSizes.add(file.size);
+        for (const record of existingRecords.filter(item => item.size === file.size && !item.fingerprint)) {
+          const oldFingerprint = await deviceAudioFingerprint(record.blob);
+          if (oldFingerprint) existingAtSize.add(oldFingerprint);
+        }
+        fingerprintsBySize.set(file.size, existingAtSize);
+      }
+
+      // If Web Crypto is unavailable, use filename plus size as a safe practical fallback.
+      const fallbackKey = `${file.name.trim().toLocaleLowerCase()}|${file.size}`;
+      const duplicate = fingerprint
+        ? existingAtSize.has(fingerprint) || selectionFingerprints.get(file.size)?.has(fingerprint)
+        : existingRecords.some(record => `${String(record.fileName || "").trim().toLocaleLowerCase()}|${record.size}` === fallbackKey) || fallbackSeen.has(fallbackKey);
+
+      if (duplicate) {
+        duplicateCount += 1;
+        continue;
+      }
+
+      if (fingerprint) {
+        if (!selectionFingerprints.has(file.size)) selectionFingerprints.set(file.size, new Set());
+        selectionFingerprints.get(file.size).add(fingerprint);
+        existingAtSize.add(fingerprint);
+        fingerprintsBySize.set(file.size, existingAtSize);
+      }
+      fallbackSeen.add(fallbackKey);
+
+      records.push({
+        id: window.crypto?.randomUUID ? window.crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+        title: file.name.replace(/\.[^/.]+$/, "").replace(/[._-]+/g, " ").trim(),
+        artist: "From this device",
+        fileName: file.name,
+        mimeType,
+        size: file.size,
+        fingerprint,
+        blob,
+        addedAt: Date.now()
+      });
+    }
+
+    if (!records.length) {
+      showStatus(`Skipped ${duplicateCount} duplicate song${duplicateCount === 1 ? "" : "s"}.`, 5000);
+      return;
+    }
+
+    showStatus(`Saving ${records.length} song${records.length === 1 ? "" : "s"} on this device…`, 0);
     const { savedRecords, failedRecords } = await storeDeviceSongs(records);
     if (savedRecords.length) {
       playlist.push(...savedRecords.map(deviceSongFromRecord));
@@ -362,11 +421,11 @@ async function addDeviceSongs(files) {
     if (failedRecords.length) {
       const quotaExceeded = failedRecords.some(item => item.error?.name === "QuotaExceededError");
       const reason = quotaExceeded ? "Device storage is full." : "Some files could not be saved.";
-      showStatus(`${savedRecords.length} added, ${failedRecords.length} failed. ${reason}`, 6000);
+      showStatus(`${savedRecords.length} added, ${failedRecords.length} failed${duplicateCount ? `, ${duplicateCount} duplicate${duplicateCount === 1 ? "" : "s"} skipped` : ""}. ${reason}`, 6000);
     } else if (skippedCount) {
-      showStatus(`Added ${savedRecords.length} song${savedRecords.length === 1 ? "" : "s"}. Skipped ${skippedCount} non-audio file${skippedCount === 1 ? "" : "s"}.`, 5000);
+      showStatus(`Added ${savedRecords.length} song${savedRecords.length === 1 ? "" : "s"}. Skipped ${duplicateCount} duplicate${duplicateCount === 1 ? "" : "s"} and ${skippedCount} non-audio file${skippedCount === 1 ? "" : "s"}.`, 5000);
     } else {
-      showStatus(`Added ${savedRecords.length} song${savedRecords.length === 1 ? "" : "s"}. Saved on this device.`, 5000);
+      showStatus(`Added ${savedRecords.length} song${savedRecords.length === 1 ? "" : "s"}. Skipped ${duplicateCount} duplicate${duplicateCount === 1 ? "" : "s"}. Saved on this device.`, 5000);
     }
   } catch (error) {
     console.error("Could not save device songs:", error);
