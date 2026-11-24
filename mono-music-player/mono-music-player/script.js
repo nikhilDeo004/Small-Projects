@@ -16,6 +16,10 @@ function escapeHTML(value) {
   }[character]));
 }
 
+function encodeAudioPath(path) {
+  return path.split("/").map(segment => encodeURIComponent(segment)).join("/");
+}
+
 function formatTime(sec) {
   if (!sec || isNaN(sec)) return "0:00";
   const m = Math.floor(sec / 60);
@@ -192,7 +196,7 @@ function loadSong(index) {
   currentIndex = index;
   const song = playlist[index];
 
-  audio.src = song.src;
+  audio.src = encodeAudioPath(song.src);
   songTitle.textContent  = song.title;
   songArtist.textContent = song.artist;
   currentTime.textContent = "0:00";
