@@ -451,8 +451,14 @@ button { color: inherit; cursor: pointer; }
   display: flex;
   align-items: center;
   gap: 16px;
+  width: 100%;
   min-width: 0;
   padding: 14px 14px;
+  color: inherit;
+  text-align: left;
+  font: inherit;
+  background: transparent;
+  border: 0;
   border-radius: 8px;
   cursor: pointer;
   transition: background var(--transition);
@@ -539,4 +545,147 @@ footer {
     scroll-behavior: auto !important;
     transition: none !important;
   }
+}
+
+/* Clear focus and larger touch targets */
+:focus-visible {
+  outline: 2px solid #d8d8d8;
+  outline-offset: 3px;
+}
+
+.icon-btn svg,
+.sidebar-toggle-btn svg,
+.sidebar-close-btn svg {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.album-symbol svg { width: 68px; height: 68px; }
+.controls .icon-btn { position: relative; width: 42px; height: 44px; }
+.controls .secondary-btn { color: #777; }
+.controls .secondary-btn.active { color: #fff; }
+.repeat-one-mark {
+  display: none;
+  position: absolute;
+  top: 7px;
+  right: 4px;
+  font-size: 9px;
+  font-weight: 700;
+}
+.repeat-one .repeat-one-mark { display: block; }
+.seek-btn {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  color: #aaa;
+  background: transparent;
+  border: 0;
+  border-radius: 50%;
+  transition: color var(--transition), background var(--transition), transform var(--transition);
+}
+.seek-btn svg { width: 34px; height: 34px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.seek-btn svg text { fill: currentColor; stroke: none; font: 600 8px Inter, sans-serif; text-anchor: middle; }
+.seek-btn:hover:not(:disabled) { color: #fff; background: #151515; }
+.seek-btn:active:not(:disabled) { transform: scale(.92); }
+.seek-btn:disabled { opacity: .3; cursor: not-allowed; }
+.play-btn svg { width: 24px; height: 24px; }
+.playlist-count {
+  min-width: 20px;
+  padding: 2px 5px;
+  color: #bbb;
+  background: #171717;
+  border-radius: 999px;
+  font: 500 10px 'JetBrains Mono', monospace;
+}
+
+@media (max-width: 700px) {
+  html, body { width: 100%; height: 100%; overflow: hidden; }
+  body { min-height: 100svh; }
+  .app {
+    display: grid;
+    grid-template-rows: auto auto minmax(0, 1fr);
+    gap: 12px;
+    width: min(100% - 28px, 560px);
+    height: 100svh;
+    min-height: 0;
+    padding: max(10px, env(safe-area-inset-top)) 0 max(10px, env(safe-area-inset-bottom));
+    overflow: hidden;
+  }
+  .header { padding-bottom: 10px; }
+  .logo { font-size: 22px; }
+  .header-right { gap: 8px; }
+  .sidebar-toggle-btn { display: flex; align-items: center; justify-content: center; gap: 7px; width: auto; min-width: 54px; height: 44px; padding: 0 10px; }
+  .search-section { margin: 0; }
+  .search-box { height: 44px; padding: 0 13px; }
+  .search-shortcut { display: none; }
+  .player-section {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: space-evenly;
+    gap: 5px;
+    min-height: 0;
+    padding: 0 0 2px;
+  }
+  .player-section > .eyebrow { margin: 0; text-align: center; }
+  .album-art { width: clamp(100px, 22svh, 158px); max-height: 22svh; margin: 0 auto; flex: 0 1 auto; }
+  .album-symbol { font-size: 0; }
+  .album-symbol svg { width: clamp(42px, 10svh, 64px); height: auto; }
+  .album-caption { bottom: 9px; font-size: 6px; }
+  .song-info { width: 100%; min-width: 0; }
+  .song-info h1 { display: -webkit-box; overflow: hidden; white-space: normal; -webkit-box-orient: vertical; -webkit-line-clamp: 2; font-size: clamp(17px, 4.8vw, 21px); }
+  .song-info p { margin-top: 4px; }
+  .progress-section { width: 100%; margin: 2px auto; }
+  .range { height: 6px; }
+  .range::-webkit-slider-thumb { width: 16px; height: 16px; }
+  .time-container { margin-top: 8px; font-size: 11px; }
+  .controls { width: 100%; justify-content: space-between; gap: 0; }
+  .controls .icon-btn { width: 36px; min-width: 36px; height: 44px; }
+  .controls .icon-btn svg { width: 19px; height: 19px; }
+  .play-btn { width: 54px; min-width: 54px; height: 54px; }
+  .seek-btn { width: 40px; min-width: 40px; height: 44px; }
+  .seek-btn svg { width: 32px; height: 32px; }
+  .volume-section { margin-top: 0; gap: 10px; }
+  .volume-range { width: min(38vw, 150px); height: 6px; }
+  .status-message { min-height: 14px; margin-top: 0; font-size: 10px; }
+  footer { display: none; }
+  .sidebar {
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: auto;
+    width: min(100%, 420px);
+    max-width: 100%;
+    height: 100dvh;
+    max-height: 100dvh;
+    border: 0;
+    border-left: 1px solid #292929;
+    border-radius: 0;
+    transform: translateX(100%);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .sidebar.open { transform: translateX(0); }
+  .sidebar-header { padding: max(20px, env(safe-area-inset-top)) 20px 16px; }
+  .sidebar .playlist { overscroll-behavior: contain; padding: 8px 12px 20px; }
+  .song-item { min-height: 58px; padding: 10px 12px; }
+  .sidebar-close-btn { width: 44px; height: 44px; }
+  .app, .sidebar { touch-action: pan-y; }
+}
+
+@media (max-width: 700px) and (max-height: 640px) {
+  .app { gap: 8px; padding-top: max(7px, env(safe-area-inset-top)); padding-bottom: max(7px, env(safe-area-inset-bottom)); }
+  .album-art { width: clamp(78px, 17svh, 112px); max-height: 17svh; }
+  .player-section { gap: 2px; }
+  .play-btn { width: 48px; min-width: 48px; height: 48px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { scroll-behavior: auto !important; transition: none !important; }
 }

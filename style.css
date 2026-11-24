@@ -657,25 +657,26 @@ footer {
   .status-message { min-height: 14px; margin-top: 0; font-size: 10px; }
   footer { display: none; }
   .sidebar {
-    top: auto;
+    top: 0;
     right: 0;
     bottom: 0;
-    left: 0;
-    width: 100%;
-    max-width: none;
+    left: auto;
+    width: min(100%, 420px);
+    max-width: 100%;
     height: 100dvh;
     max-height: 100dvh;
     border: 0;
-    border-top: 1px solid #292929;
-    border-radius: 18px 18px 0 0;
-    transform: translateY(100%);
+    border-left: 1px solid #292929;
+    border-radius: 0;
+    transform: translateX(100%);
     padding-bottom: env(safe-area-inset-bottom);
   }
-  .sidebar.open { transform: translateY(0); }
+  .sidebar.open { transform: translateX(0); }
   .sidebar-header { padding: max(20px, env(safe-area-inset-top)) 20px 16px; }
   .sidebar .playlist { overscroll-behavior: contain; padding: 8px 12px 20px; }
   .song-item { min-height: 58px; padding: 10px 12px; }
   .sidebar-close-btn { width: 44px; height: 44px; }
+  .app, .sidebar { touch-action: pan-y; }
 }
 
 @media (max-width: 700px) and (max-height: 640px) {

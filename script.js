@@ -61,6 +61,7 @@ const sidebar        = $("sidebar");
 const sidebarOverlay = $("sidebarOverlay");
 const sidebarToggle  = $("sidebarToggle");
 const sidebarClose   = $("sidebarClose");
+const appShell       = document.querySelector(".app");
 
 /* ── State ─────────────────────────────────────────── */
 
@@ -109,6 +110,43 @@ function toggleSidebar() {
 sidebarToggle.addEventListener("click", toggleSidebar);
 sidebarClose.addEventListener("click", closeSidebar);
 sidebarOverlay.addEventListener("click", closeSidebar);
+
+let swipeStart = null;
+
+function rememberSwipeStart(event) {
+  if (event.touches.length !== 1) {
+    swipeStart = null;
+    return;
+  }
+  const touch = event.touches[0];
+  swipeStart = { x: touch.clientX, y: touch.clientY, time: Date.now() };
+}
+
+function finishSwipe(event, action) {
+  if (!swipeStart || event.changedTouches.length !== 1) return;
+  const touch = event.changedTouches[0];
+  const deltaX = touch.clientX - swipeStart.x;
+  const deltaY = touch.clientY - swipeStart.y;
+  const elapsed = Date.now() - swipeStart.time;
+  swipeStart = null;
+
+  if (elapsed > 900 || Math.abs(deltaX) < 64 || Math.abs(deltaY) > Math.abs(deltaX) * 0.8) return;
+  if (!window.matchMedia("(max-width: 700px)").matches) return;
+  event.preventDefault();
+
+  if (action === "open" && deltaX < -64 && !sidebarOpen) openSidebar();
+  if (action === "close" && deltaX > 64 && sidebarOpen) closeSidebar();
+}
+
+appShell.addEventListener("touchstart", rememberSwipeStart, { passive: true });
+appShell.addEventListener("touchend", event => finishSwipe(event, "open"), { passive: false });
+appShell.addEventListener("touchcancel", () => { swipeStart = null; }, { passive: true });
+sidebar.addEventListener("touchstart", rememberSwipeStart, { passive: true });
+sidebar.addEventListener("touchend", event => finishSwipe(event, "close"), { passive: false });
+sidebar.addEventListener("touchcancel", () => { swipeStart = null; }, { passive: true });
+sidebarOverlay.addEventListener("touchstart", rememberSwipeStart, { passive: true });
+sidebarOverlay.addEventListener("touchend", event => finishSwipe(event, "close"), { passive: false });
+sidebarOverlay.addEventListener("touchcancel", () => { swipeStart = null; }, { passive: true });
 
 /* ── Render playlist ───────────────────────────────── */
 
