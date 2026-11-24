@@ -48,6 +48,7 @@ Keep `audios/` in the repository so Vercel can serve the files. Be mindful of Gi
 - Play, pause, previous and next
 - Search by track title or artist
 - Playlist with current-track highlight
+- Favorite and unfavorite tracks, browse favorites, and keep them saved in this browser
 - Seek/progress and volume controls
 - Shuffle and repeat-current-track
 - Media Session metadata and supported lock-screen/headset controls

@@ -42,6 +42,7 @@ const $ = id => document.getElementById(id);
 const audio        = $("audioPlayer");
 const songTitle    = $("songTitle");
 const songArtist   = $("songArtist");
+const currentFavoriteBtn = $("currentFavoriteBtn");
 const progressBar  = $("progressBar");
 const currentTime  = $("currentTime");
 const duration     = $("duration");
@@ -57,6 +58,10 @@ const volumeValue  = $("volumeValue");
 const searchInput  = $("searchInput");
 const songCount    = $("songCount");
 const headerSongCount = $("headerSongCount");
+const allSongCount = $("allSongCount");
+const favoriteCount = $("favoriteCount");
+const allSongsFilterBtn = $("allSongsFilter");
+const favoritesFilterBtn = $("favoritesFilter");
 const playlistEl   = $("playlist");
 const statusMsg    = $("statusMessage");
 
@@ -75,6 +80,20 @@ let isShuffle     = false;
 let repeatMode    = 0;          // 0 = off, 1 = all, 2 = one
 let filteredList  = [...playlist];
 let sidebarOpen   = false;
+let activePlaylistFilter = "all";
+
+const FAVORITES_STORAGE_KEY = "mono-music-player-favorites";
+function readFavoriteSources() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(FAVORITES_STORAGE_KEY) || "[]");
+    return new Set(Array.isArray(saved) ? saved.filter(source => typeof source === "string") : []);
+  } catch (_) {
+    return new Set();
+  }
+}
+
+let favoriteSources = readFavoriteSources();
+favoriteSources = new Set([...favoriteSources].filter(source => playlist.some(song => song.src === source)));
 
 /* ── Status bar helper ─────────────────────────────── */
 
@@ -152,13 +171,66 @@ sidebarOverlay.addEventListener("touchstart", rememberSwipeStart, { passive: tru
 sidebarOverlay.addEventListener("touchend", event => finishSwipe(event, "close"), { passive: false });
 sidebarOverlay.addEventListener("touchcancel", () => { swipeStart = null; }, { passive: true });
 
+function updateFavoriteControls() {
+  const favorite = currentIndex >= 0 && favoriteSources.has(playlist[currentIndex].src);
+  currentFavoriteBtn.disabled = currentIndex < 0;
+  currentFavoriteBtn.classList.toggle("is-favorite", favorite);
+  currentFavoriteBtn.setAttribute("aria-pressed", String(favorite));
+  currentFavoriteBtn.setAttribute("aria-label", favorite ? "Remove current song from favorites" : "Add current song to favorites");
+  allSongCount.textContent = playlist.length;
+  favoriteCount.textContent = favoriteSources.size;
+  allSongsFilterBtn.classList.toggle("active", activePlaylistFilter === "all");
+  favoritesFilterBtn.classList.toggle("active", activePlaylistFilter === "favorites");
+  allSongsFilterBtn.setAttribute("aria-pressed", String(activePlaylistFilter === "all"));
+  favoritesFilterBtn.setAttribute("aria-pressed", String(activePlaylistFilter === "favorites"));
+}
+
+function updatePlaylistView() {
+  const query = searchInput.value.toLowerCase().trim();
+  filteredList = playlist.filter(song => {
+    const matchesFilter = activePlaylistFilter === "all" || favoriteSources.has(song.src);
+    const matchesSearch = !query || song.title.toLowerCase().includes(query) || song.artist.toLowerCase().includes(query);
+    return matchesFilter && matchesSearch;
+  });
+  renderPlaylist(filteredList);
+}
+
+function toggleFavorite(song) {
+  if (!song) return;
+  const wasFavorite = favoriteSources.has(song.src);
+  if (wasFavorite) favoriteSources.delete(song.src);
+  else favoriteSources.add(song.src);
+
+  let persisted = true;
+  try {
+    localStorage.setItem(FAVORITES_STORAGE_KEY, JSON.stringify([...favoriteSources]));
+  } catch (_) {
+    persisted = false;
+  }
+
+  updatePlaylistView();
+  updateFavoriteControls();
+  const action = wasFavorite ? `Removed ${song.title} from favorites.` : `Added ${song.title} to favorites.`;
+  showStatus(persisted ? action : `${action} Favorites will reset when this page closes.`);
+}
+
 /* ── Render playlist ───────────────────────────────── */
 
 function renderPlaylist(list = filteredList) {
   playlistEl.innerHTML = "";
+  updateFavoriteControls();
 
   if (list.length === 0) {
-    playlistEl.innerHTML = '<p class="empty-message">No songs found.</p>';
+    const message = document.createElement("p");
+    message.className = "empty-message";
+    if (activePlaylistFilter === "favorites" && !searchInput.value.trim() && favoriteSources.size === 0) {
+      message.textContent = "No favorites yet. Tap the heart on a song to save it here.";
+    } else if (activePlaylistFilter === "favorites") {
+      message.textContent = "No favorites match your search.";
+    } else {
+      message.textContent = "No songs match your search.";
+    }
+    playlistEl.appendChild(message);
     songCount.textContent = "0";
     headerSongCount.textContent = playlist.length;
     return;
@@ -169,21 +241,32 @@ function renderPlaylist(list = filteredList) {
 
   list.forEach((song, i) => {
     const globalIndex = playlist.indexOf(song);
-    const item = document.createElement("button");
-    item.type = "button";
+    const item = document.createElement("div");
     item.className = "song-item" + (globalIndex === currentIndex ? " active" : "");
-    item.innerHTML = `
+    const selectButton = document.createElement("button");
+    selectButton.type = "button";
+    selectButton.className = "song-select";
+    selectButton.setAttribute("aria-current", globalIndex === currentIndex ? "true" : "false");
+    selectButton.innerHTML = `
       <span class="song-number">${String(i + 1).padStart(2, "0")}</span>
       <div class="song-details">
-      <h3>${escapeHTML(song.title)}</h3>
+        <h3>${escapeHTML(song.title)}</h3>
         <p>${escapeHTML(song.artist)}</p>
       </div>
       ${globalIndex === currentIndex && isPlaying ? '<span class="playing-indicator">♫</span>' : ""}
     `;
-    item.addEventListener("click", () => {
+    selectButton.addEventListener("click", () => {
       loadSong(globalIndex);
       if (window.matchMedia("(max-width: 700px)").matches) closeSidebar();
     });
+    const favoriteButton = document.createElement("button");
+    favoriteButton.type = "button";
+    favoriteButton.className = "song-favorite-btn" + (favoriteSources.has(song.src) ? " is-favorite" : "");
+    favoriteButton.setAttribute("aria-pressed", String(favoriteSources.has(song.src)));
+    favoriteButton.setAttribute("aria-label", `${favoriteSources.has(song.src) ? "Remove from" : "Add to"} favorites: ${song.title}`);
+    favoriteButton.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8l1.1 1.1L12 21l7.8-7.5 1.1-1.1a5.5 5.5 0 0 0-.1-7.8Z"/></svg>';
+    favoriteButton.addEventListener("click", () => toggleFavorite(song));
+    item.append(selectButton, favoriteButton);
     playlistEl.appendChild(item);
   });
 }
@@ -195,6 +278,7 @@ function loadSong(index) {
 
   currentIndex = index;
   const song = playlist[index];
+  updateFavoriteControls();
 
   audio.src = encodeAudioPath(song.src);
   songTitle.textContent  = song.title;
@@ -366,16 +450,17 @@ repeatBtn.addEventListener("click", () => {
 /* ── Search ────────────────────────────────────────── */
 
 searchInput.addEventListener("input", () => {
-  const q = searchInput.value.toLowerCase().trim();
-  if (!q) {
-    filteredList = [...playlist];
-  } else {
-    filteredList = playlist.filter(s =>
-      s.title.toLowerCase().includes(q) ||
-      s.artist.toLowerCase().includes(q)
-    );
-  }
-  renderPlaylist();
+  updatePlaylistView();
+});
+
+allSongsFilterBtn.addEventListener("click", () => {
+  activePlaylistFilter = "all";
+  updatePlaylistView();
+});
+
+favoritesFilterBtn.addEventListener("click", () => {
+  activePlaylistFilter = "favorites";
+  updatePlaylistView();
 });
 
 /* ── Button wiring ─────────────────────────────────── */
@@ -385,6 +470,9 @@ nextBtn.addEventListener("click", playNext);
 prevBtn.addEventListener("click", playPrev);
 seekBackBtn.addEventListener("click", () => skipBy(-10));
 seekForwardBtn.addEventListener("click", () => skipBy(10));
+currentFavoriteBtn.addEventListener("click", () => {
+  if (currentIndex >= 0) toggleFavorite(playlist[currentIndex]);
+});
 
 /* ── Keyboard shortcuts ────────────────────────────── */
 

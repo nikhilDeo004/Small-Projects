@@ -39,9 +39,15 @@
         <div class="album-caption">MASTA REE / AUDIO</div>
       </div>
 
-      <div class="song-info">
-        <h1 id="songTitle">Select a song</h1>
-        <p id="songArtist">Your music collection</p>
+      <div class="song-summary">
+        <div class="song-info">
+          <h1 id="songTitle">Select a song</h1>
+          <p id="songArtist">Your music collection</p>
+        </div>
+        <button id="currentFavoriteBtn" class="favorite-current-btn" type="button" aria-label="Add current song to favorites" aria-pressed="false" disabled>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8l1.1 1.1L12 21l7.8-7.5 1.1-1.1a5.5 5.5 0 0 0-.1-7.8Z"/></svg>
+          <span class="visually-hidden">Favorite this song</span>
+        </button>
       </div>
 
       <div class="progress-section">
@@ -92,7 +98,11 @@
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
       </button>
     </div>
-    <div id="playlist" class="playlist"></div>
+    <div class="playlist-filters" role="group" aria-label="Filter playlist">
+      <button id="allSongsFilter" class="playlist-filter active" type="button" aria-pressed="true">All <span id="allSongCount">0</span></button>
+      <button id="favoritesFilter" class="playlist-filter" type="button" aria-pressed="false">Favorites <span id="favoriteCount">0</span></button>
+    </div>
+    <div id="playlist" class="playlist" aria-live="polite"></div>
   </aside>
 
   <audio id="audioPlayer" preload="none"></audio>
